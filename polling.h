@@ -20,12 +20,11 @@ private:
     cv::Mat img;
     cv::Mat mask;
     cv::Mat result;
-    cv::Mat croppedAnswersTable;
 
     std::string croppingPatternPath;
     std::string pollingToCropPath;
 
-    QImage resultTableImage;
+    QImage tableImage;
     bool isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, int ySize);
 public:
     Polling(const char *pollingToCropPath, const char *croppingPatternPath);
@@ -35,8 +34,7 @@ public:
     void openPollingImage(std::string filename);
     void openTemplateImage(std::string filename);
     QImage getDoneImage();
-    void findAnswersTablePosition();
-    void readResults(QGraphicsScene &scene);
+    void findAnswersTablePosition(QGraphicsScene &scene);
 };
 
 #endif // POLLING_H

@@ -51,11 +51,11 @@ void MainWindow::on_pushButton_pressed()
 
 void MainWindow::on_pushButton_3_pressed()
 {
-    polling.findAnswersTablePosition();
     scene->clear();
     scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
+    polling.findAnswersTablePosition(*scene);
     scene->setSceneRect(image.rect());
-    polling.readResults(*scene);
+    //polling.readResults(*scene);
     ui->graphicsView->resetTransform();
     ui->graphicsView->show();
 }

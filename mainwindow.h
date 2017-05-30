@@ -23,15 +23,17 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_actionOpen_triggered();
+    void on_p1_button_pressed();
 
-    void on_pushButton_2_pressed();
+    void on_p2_button_pressed();
 
-    void on_pushButton_pressed();
-
-    void on_pushButton_3_pressed();
+    void on_analyse_button_pressed();
 
 private:
+    std::string firstPagePath;
+    std::string secondPagePath;
+    bool loadedFirst = false;
+    bool loadedSecond = false;
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
     QImage image;

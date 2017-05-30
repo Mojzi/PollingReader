@@ -23,36 +23,56 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::on_actionOpen_triggered()
+
+void MainWindow::on_p1_button_pressed()
 {
-    //std::string name2 = QFileDialog::getOpenFileName(this).toStdString();
-    //polling.getTableCoords();
-    //scene->clear();
-    //scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
-    //scene->setSceneRect(image.rect());
-    //ui->graphicsView->resetTransform();
-    //ui->graphicsView->show();
+
+    firstPagePath = QFileDialog::getOpenFileName(this).toStdString();
+
+    if(!firstPagePath.empty())
+        loadedFirst = true;
+    else
+        loadedFirst = false;
+
+    ui->p1_line->setText(QString::fromStdString(firstPagePath));
 }
 
-void MainWindow::on_pushButton_2_pressed()
+void MainWindow::on_p2_button_pressed()
 {
-    std::string image = QFileDialog::getOpenFileName(this).toStdString();
-    polling.openPollingImage(image);
-    ui->lineEdit->setText(QString::fromStdString(image));
+    secondPagePath = QFileDialog::getOpenFileName(this).toStdString();
+    //polling.openPollingImage(image);
+    if(!secondPagePath.empty())
+        loadedSecond = true;
+    else
+        loadedSecond = false;
+    ui->p2_line->setText(QString::fromStdString(secondPagePath));
 }
 
-void MainWindow::on_pushButton_pressed()
+void MainWindow::on_analyse_button_pressed()
 {
-    std::string image = QFileDialog::getOpenFileName(this).toStdString();
-}
-
-void MainWindow::on_pushButton_3_pressed()
-{
-    scene->clear();
-    polling.resizeImage();
-    scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
-    polling.findAnswersTablePosition(*scene);
-    scene->setSceneRect(image.rect());
-    ui->graphicsView->resetTransform();
-    ui->graphicsView->show();
+    int offset;
+    if(loadedFirst)
+    {
+        polling.openPollingImage(firstPagePath);
+        scene->clear();
+        polling.resizeImage();
+        scene->setSceneRect(image.rect());
+        QGraphicsPixmapItem *first = scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
+        polling.findAnswersTablePosition(*scene, 0, 0);
+        ui->graphicsView->resetTransform();
+        ui->graphicsView->show();
+    }
+    if(loadedSecond)
+    {
+        polling.openPollingImage(secondPagePath);
+        //scene->clear();
+        polling.resizeImage();
+        //scene->setSceneRect(image.rect());
+        scene->setSceneRect(0,0,10000,10000);
+        QGraphicsPixmapItem *second = scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
+        second->setOffset(2050, 0);
+        polling.findAnswersTablePosition(*scene, 2050, 0);
+        //ui->graphicsView->resetTransform();
+        ui->graphicsView->show();
+    }
 }

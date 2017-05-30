@@ -34,7 +34,7 @@ public:
     void openPollingImage(std::string filename);
     void resizeImage();
     QImage getDoneImage();
-    void findAnswersTablePosition(QGraphicsScene &scene);
+    void findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int yOffset);
 };
 
 #endif // POLLING_H

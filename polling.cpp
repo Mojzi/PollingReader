@@ -29,7 +29,7 @@ QImage Polling::getDoneImage()
     return tableImage;
 }
 
-void Polling::findAnswersTablePosition(QGraphicsScene &scene)
+void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int yOffset)
 {
     using namespace cv;
     Mat gray;
@@ -149,10 +149,10 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
     {
         std::sort(newRect.begin()+i, newRect.begin()+i+15, compare_rect_h);
     }
-    std::cout << "Contour: " << std::endl;
+    //std::cout << "Contour: " << std::endl;
     for(unsigned int i = 0; i < newRect.size(); i++)
     {
-        std::cout << newRect[i];
+        //std::cout << newRect[i];
         int x1 = newRect[i].x;
         int y1 = newRect[i].y;
         int x2 = x1 + newRect[i].width;
@@ -160,16 +160,16 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
         if(isFieldChecked(tempImage, x1, y1, x2, y2))
         {
             wynik.push_back('T');
-            QPoint lt(x2, y1);
-            QPoint rb(x1, y2);
+            QPoint lt(x2+xOffset, y1+yOffset);
+            QPoint rb(x1+xOffset, y2+yOffset);
             QRect rect(lt, rb);
             scene.addRect(rect, QColor(255, 0, 0, 255));
         }
         else
         {
             wynik.push_back('N');
-            QPoint lt(x1, y1);
-            QPoint rb(x2, y2);
+            QPoint lt(x1+xOffset, y1+yOffset);
+            QPoint rb(x2+xOffset, y2+yOffset);
             QRect rect(lt, rb);
             scene.addRect(rect, QColor(0, 0, 255, 255));
         }

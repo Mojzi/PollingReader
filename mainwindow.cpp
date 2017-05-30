@@ -10,8 +10,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    std::string ptemp = "ankietawzor.png";
-    polling.openTemplateImage(ptemp);
 
     scene = new QGraphicsScene(this);
     scene->setSceneRect(image.rect());
@@ -46,16 +44,15 @@ void MainWindow::on_pushButton_2_pressed()
 void MainWindow::on_pushButton_pressed()
 {
     std::string image = QFileDialog::getOpenFileName(this).toStdString();
-    polling.openTemplateImage(image);
 }
 
 void MainWindow::on_pushButton_3_pressed()
 {
     scene->clear();
+    polling.resizeImage();
     scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
     polling.findAnswersTablePosition(*scene);
     scene->setSceneRect(image.rect());
-    //polling.readResults(*scene);
     ui->graphicsView->resetTransform();
     ui->graphicsView->show();
 }

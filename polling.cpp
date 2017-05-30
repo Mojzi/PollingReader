@@ -1,10 +1,9 @@
 #include "polling.h"
 
-using namespace std;
 using namespace cv;
 struct contour_sorter // 'less' for contours
 {
-    bool operator ()( const vector<Point>& a, const vector<Point> & b )
+    bool operator ()( const std::vector<Point>& a, const std::vector<Point> & b )
     {
         Rect ra(boundingRect(a));
         Rect rb(boundingRect(b));
@@ -26,17 +25,16 @@ QImage Polling::getDoneImage()
     cvtColor(img, temp,CV_BGR2RGB); // cvtColor Makes a copt, that what i need
     tableImage =  QImage((const uchar *) temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888);
     tableImage.bits(); // enforce deep copy, see documentation
-    // of QImage::QImage ( const uchar * data, int width, int height, Format format )
+                       // of QImage::QImage ( const uchar * data, int width, int height, Format format )
     return tableImage;
 }
 
 void Polling::findAnswersTablePosition(QGraphicsScene &scene)
 {
     using namespace cv;
-    Size size(2048, 3508); //Scale do 300DPI
-    resize(img, img, size);
     Mat gray;
 
+    // Convert to gray image
     if (img.channels() == 3)
     {
         cvtColor(img, gray, CV_BGR2GRAY);
@@ -67,8 +65,6 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
     dilate(horizontal, horizontal, horizontalStructure, Point(-1, -1));
     //    dilate(horizontal, horizontal, horizontalStructure, Point(-1, -1)); // expand horizontal lines
 
-    // Show extracted horizontal lines
-    imwrite("horizontal.jpg", horizontal);
     // Specify size on vertical axis
     int verticalsize = vertical.rows / scale;
 
@@ -80,22 +76,16 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
     dilate(vertical, vertical, verticalStructure, Point(-1, -1));
     //    dilate(vertical, vertical, verticalStructure, Point(-1, -1)); // expand vertical lines
 
-    // Show extracted vertical lines
-    imwrite("vertical.jpg", vertical);
-
     // create a mask which includes the tables
     Mat mask = horizontal + vertical;
-    imwrite("mask.jpg", mask);
 
     // find the joints between the lines of the tables, we will use this information in order to descriminate tables from pictures (tables will contain more than 4 joints while a picture only 4 (i.e. at the corners))
     Mat joints;
     bitwise_and(horizontal, vertical, joints);
-    imwrite("joints.jpg", joints);
 
 
     Mat blobs;
     bitwise_xor(bw, mask, blobs);
-    imwrite("blobs.jpg", blobs);
 
     // Find external contours from the mask, which most probably will belong to tables or to images
     std::vector<Vec4i> hierarchy;
@@ -135,8 +125,6 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
         }
     }
 
-    imwrite("contours.jpg", img);
-
     QImage tempImage = tableImage.convertToFormat(QImage::Format_Mono);
 
 
@@ -148,9 +136,11 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
     std::vector<char> wynik;
     std::vector<Rect> newRect;
     int contoursNmb = 0;
+    int minContourSize = 1000;
+    int maxContourSize = 2500;
     for(unsigned int i = 0; i < boundRect.size(); i++)
     {
-        if(contourArea(contours[i]) < 1000 || contourArea(contours[i]) > 2500)
+        if(contourArea(contours[i]) < minContourSize || contourArea(contours[i]) > maxContourSize)
             continue;
         newRect.push_back(boundRect[i]);
     }
@@ -159,10 +149,10 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
     {
         std::sort(newRect.begin()+i, newRect.begin()+i+15, compare_rect_h);
     }
-    cout << "Contour: " << endl;
+    std::cout << "Contour: " << std::endl;
     for(unsigned int i = 0; i < newRect.size(); i++)
     {
-        cout << newRect[i];
+        std::cout << newRect[i];
         int x1 = newRect[i].x;
         int y1 = newRect[i].y;
         int x2 = x1 + newRect[i].width;
@@ -185,7 +175,7 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene)
         }
         contoursNmb++;
     }
-    cout << endl << endl;
+    std::cout << std::endl << std::endl;
     for(int i=0; i<contoursNmb; i++)
     {
         if((i)%15 == 0 && i!=0)
@@ -233,26 +223,23 @@ Polling::Polling()
 {
 }
 
-Polling::Polling(std::string tpolling, std::string tpattern)
+Polling::Polling(std::string tpolling)
 {
     pollingToCropPath = tpolling;
-    croppingPatternPath = tpattern;
 }
 
 void Polling::openPollingImage(std::string filename)
 {
     img = imread( filename.c_str(), cv::IMREAD_COLOR );
-    Size size(2048, 3508);
+}
+
+void Polling::resizeImage()
+{
+    Size size(2048, 3508); //Scale do 300DPI
     resize(img, img, size);
 }
-void Polling::openTemplateImage(std::string filename)
-{
-    templ = imread( filename.c_str(), cv::IMREAD_COLOR );
-}
-Polling::Polling(const char *tpolling, const char *tpattern)
+Polling::Polling(const char *tpolling)
 {
     pollingToCropPath = std::string(tpolling);
-    croppingPatternPath = std::string(tpattern);
     img = imread( pollingToCropPath.c_str(), cv::IMREAD_COLOR );
-    templ = imread( croppingPatternPath.c_str(), cv::IMREAD_COLOR );
 }

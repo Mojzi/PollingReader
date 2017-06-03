@@ -5,7 +5,9 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <array>
+#include <vector>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -19,23 +21,19 @@ private:
     cv::Mat img;
     cv::Mat mask;
     cv::Mat result;
-    cv::Mat croppedAnswersTable;
+    QImage tableImage;
 
-    std::string croppingPatternPath;
-    std::string pollingToCropPath;
+    std::vector<bool> results;
 
-    QImage resultTableImage;
     bool isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, int ySize);
 public:
-    Polling(const char *pollingToCropPath, const char *croppingPatternPath);
-    Polling(std::string tpolling, std::string tpattern);
     Polling();
 
-    void openPollingImage(std::string filename);
-    void openTemplateImage(std::string filename);
-    QImage getDoneImage();
-    void findAnswersTablePosition();
-    void readResults(QGraphicsScene &scene);
+    bool loadImage(std::string filename);
+    void normalizeImageSize();
+    QImage fromMatToQImage();
+    void analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset);
+    bool writeAnswersToFile(std::string filename);
 };
 
 #endif // POLLING_H

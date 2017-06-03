@@ -1,65 +1,195 @@
 #include "polling.h"
 
-QImage Polling::getDoneImage()
-{
-     cv::Mat temp; // make the same cv::Mat
-     cvtColor(croppedAnswersTable, temp,CV_BGR2RGB); // cvtColor Makes a copt, that what i need
-     resultTableImage =  QImage((const uchar *) temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888);
-     resultTableImage.bits(); // enforce deep copy, see documentation
-                          // of QImage::QImage ( const uchar * data, int width, int height, Format format )
-     return resultTableImage;
+using namespace cv;
+
+// For sorting contours with std::sort
+bool compare_rect_h(const Rect & a, const Rect &b) {
+    return a.x <= b.x;
+}
+bool compare_rect_v(const Rect & a, const Rect &b) {
+    return a.y <= b.y;
 }
 
-void Polling::findAnswersTablePosition()
+QImage Polling::fromMatToQImage()
+{
+    cv::Mat temp; // make the same cv::Mat
+    cvtColor(img, temp,CV_BGR2RGB); // cvtColor Makes a copt, that what i need
+    tableImage =  QImage((const uchar *) temp.data, temp.cols, temp.rows, temp.step, QImage::Format_RGB888);
+    tableImage.bits(); // enforce deep copy, see documentation
+                       // of QImage::QImage ( const uchar * data, int width, int height, Format format )
+    return tableImage;
+}
+
+void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 {
     using namespace cv;
-    bool use_mask = 0;
-    int match_method = 0;
-    /// Source image to display
-    img.copyTo( croppedAnswersTable );
+    Mat gray;
 
-    /// Create the result matrix
-    int result_cols =  img.cols - templ.cols + 1;
-    int result_rows = img.rows - templ.rows + 1;
-
-    result.create( result_rows, result_cols, CV_32FC1 );
-    /// Do the Matching and Normalize
-    bool method_accepts_mask = (CV_TM_SQDIFF == match_method || match_method == CV_TM_CCORR_NORMED);
-    if (use_mask && method_accepts_mask)
-    { matchTemplate( img, templ, result, match_method, mask); }
+    // Convert to gray image
+    if (img.channels() == 3)
+    {
+        cvtColor(img, gray, CV_BGR2GRAY);
+    }
     else
-    { matchTemplate( img, templ, result, match_method); }
+    {
+        gray = img;
+    }
 
-    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+    // Apply adaptiveThreshold at the bitwise_not of gray, notice the ~ symbol
+    Mat bw;
+    adaptiveThreshold(~gray, bw, 255, CV_ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, -2);
 
-    /// Localizing the best match with minMaxLoc
-    double minVal; double maxVal; Point minLoc; Point maxLoc;
-    Point matchLoc;
+    // Create the images that will use to extract the horizonta and vertical lines
+    Mat horizontal = bw.clone();
+    Mat vertical = bw.clone();
 
-    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+    int scale = 15; // play with this variable in order to increase/decrease the amount of lines to be detected
+
+    // Specify size on horizontal axis
+    int horizontalsize = horizontal.cols / scale;
+
+    // Create structure element for extracting horizontal lines through morphology operations
+    Mat horizontalStructure = getStructuringElement(MORPH_RECT, Size(horizontalsize,1));
+
+    // Apply morphology operations
+    erode(horizontal, horizontal, horizontalStructure, Point(-1, -1));
+    dilate(horizontal, horizontal, horizontalStructure, Point(-1, -1));
+    //    dilate(horizontal, horizontal, horizontalStructure, Point(-1, -1)); // expand horizontal lines
+
+    // Specify size on vertical axis
+    int verticalsize = vertical.rows / scale;
+
+    // Create structure element for extracting vertical lines through morphology operations
+    Mat verticalStructure = getStructuringElement(MORPH_RECT, Size( 1,verticalsize));
+
+    // Apply morphology operations
+    erode(vertical, vertical, verticalStructure, Point(-1, -1));
+    dilate(vertical, vertical, verticalStructure, Point(-1, -1));
+    //    dilate(vertical, vertical, verticalStructure, Point(-1, -1)); // expand vertical lines
+
+    // create a mask which includes the tables
+    Mat mask = horizontal + vertical;
+
+    // find the joints between the lines of the tables, we will use this information in order to descriminate tables from pictures (tables will contain more than 4 joints while a picture only 4 (i.e. at the corners))
+    Mat joints;
+    bitwise_and(horizontal, vertical, joints);
 
 
-    /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
-    if( match_method  == TM_SQDIFF || match_method == TM_SQDIFF_NORMED )
-    { matchLoc = minLoc; }
-    else
-    { matchLoc = maxLoc; }
+    Mat blobs;
+    bitwise_xor(bw, mask, blobs);
 
-    cv::Rect tableBounds(matchLoc.x, matchLoc.y, templ.cols, templ.rows);
-    croppedAnswersTable = croppedAnswersTable(tableBounds);
+    // Find external contours from the mask, which most probably will belong to tables or to images
+    std::vector<Vec4i> hierarchy;
+    std::vector<std::vector<cv::Point> > contours;
+    cv::findContours(mask, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE, Point(0, 0));
 
+    std::vector<std::vector<Point> > contours_poly( contours.size() );
+    std::vector<Rect> boundRect( contours.size() );
+    std::vector<Mat> rois;
+
+    for (size_t i = 0; i < contours.size(); i++)
+    {
+
+        approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+        boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+
+        // find the number of joints that each table has
+        Mat roi = joints(boundRect[i]);
+
+        std::vector<std::vector<Point> > joints_contours;
+        findContours(roi, joints_contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+
+        // if the number is not more than 5 then most likely it not a table
+        if(joints_contours.size() <= 4)
+            continue;
+
+        rois.push_back(img(boundRect[i]).clone());
+        rectangle( img, boundRect[i].tl(), boundRect[i].br(), Scalar(0, i==0?0:255, i==0?255:0), 3, 8, 0 );
+
+        if(i == 0)
+        {
+            cv::Rect tableBounds(boundRect[i].tl(), boundRect[i].br());
+        }
+    }
+
+    QImage tempImage = tableImage.convertToFormat(QImage::Format_Mono);
+
+
+    /*******************************
+     *
+     *  Read results
+     *
+     *******************************/
+    std::vector<Rect> newRect;
+    int minContourArea = 1000;
+    int maxContourArea = 2500;
+
+    // Throw away all contours that are not answer fields
+    for(unsigned int i = 0; i < boundRect.size(); i++)
+    {
+        if(contourArea(contours[i]) < minContourArea || contourArea(contours[i]) > maxContourArea)
+            continue;
+        newRect.push_back(boundRect[i]);
+    }
+
+    // Dunno why, but this combination of vertical/horizontal sorts seem to work
+    std::sort(newRect.begin(), newRect.end(), compare_rect_v);
+    for(unsigned int i=0; i<newRect.size(); i+=15)
+    {
+        std::sort(newRect.begin()+i, newRect.begin()+i+15, compare_rect_h);
+    }
+
+    // Draw found answer fields on screen and mark them if checked
+    for(unsigned int i = 0; i < newRect.size(); i++)
+    {
+        int x1 = newRect[i].x;
+        int y1 = newRect[i].y;
+        int x2 = x1 + newRect[i].width;
+        int y2 = y1 + newRect[i].height;
+        if(isFieldChecked(tempImage, x1, y1, x2, y2))
+        {
+            results.push_back(TRUE);
+            QPoint lt(x2+xOffset, y1+yOffset);
+            QPoint rb(x1+xOffset, y2+yOffset);
+            QRect rect(lt, rb);
+            scene.addRect(rect, QColor(255, 0, 0, 255));
+        }
+        else
+        {
+            results.push_back(FALSE);
+            QPoint lt(x1+xOffset, y1+yOffset);
+            QPoint rb(x2+xOffset, y2+yOffset);
+            QRect rect(lt, rb);
+            scene.addRect(rect, QColor(0, 0, 255, 255));
+        }
+    }
+}
+
+bool Polling::writeAnswersToFile(std::string filename)
+{
+   std::ofstream output;
+   output.open(filename);
+   if(!output.is_open())
+       return false;
+
+   for(unsigned int i=0; i<results.size(); i++)
+   {
+       if(i%15 == 0 && i!=0)
+           output << "\n";
+       output << (results[i]?"1":"0");
+   }
+   output.close();
+   return true;
 }
 
 bool Polling::isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, int ySize)
 {
     int whiteCount = 0;
     int blackCount = 0;
-    //unsigned char *imgData = tempImage.bits();
     for(int i = xPos; i < xSize; i++)
     {
         for(int j = yPos; j< ySize; j++)
         {
-            //if(*(imgData + j + i*ySize) == 1)
             if(tempImage.width() < i+1 || tempImage.height() < j+1)
                 whiteCount++;
             else
@@ -72,98 +202,28 @@ bool Polling::isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, i
             }
         }
     }
-    std::cout << " Black:" << blackCount << " White:" << whiteCount;
+    //std::cout << " Black:" << blackCount << " White:" << whiteCount;
     return blackCount>whiteCount/3?true:false;
 }
 
-void Polling::readResults(QGraphicsScene &scene)
-{
-    QImage tempImage = resultTableImage.convertToFormat(QImage::Format_Mono);
-    int imageWidth = tempImage.width();
-    int imageHeight = tempImage.height();
-    unsigned char *image = tempImage.bits();
 
-    int questionsNumber = 5;
-    int answersWidth = 3;
-    int tutors = 18;
-    int currTutors = 7;
-    int answersHeight = 2;
-
-    int squareRows = tutors*answersHeight;
-    int squareColumns = questionsNumber * answersWidth;
-    int squareNumber = squareRows*squareColumns;
-
-    int squareWidth = (imageWidth / squareColumns) - 6;
-    int squareHeight = imageHeight / (squareRows) - 6;
-    bool quareTest = false;
-
-    int column = 0;
-    int row = 0;
-    for(int j = 0, row = 0; row < tutors*2; j+=squareHeight)
-    {
-        if((row)%2 == 0 && row !=0  && j!=0)
-        {
-            std::cout << std::endl;
-            j+=8;
-        }
-        else if(j!=0)
-            j+=6;
-        for(int i = 0, column = 0; column < squareColumns; i+=squareWidth)
-        {
-            if((column)%3 == 0 && column !=0 && i!=0)
-            {
-                std::cout << " ";
-                i+=8;
-            }
-            else if(i!=0)
-                i+=6;
-            if(isFieldChecked(tempImage, i, j, i+squareWidth, j+squareHeight))
-            {
-                std::cout << "T";
-                QPoint lt(i, j);
-                QPoint rb(i+squareWidth, j+squareHeight);
-                QRect rect(lt, rb);
-                scene.addRect(rect, QColor(255, 0, 0, 255));
-                quareTest = true;
-            }
-            else
-            {
-                std::cout << "N";
-                QPoint lt(i, j);
-                QPoint rb(i+squareWidth, j+squareHeight);
-                QRect rect(lt, rb);
-                scene.addRect(rect, QColor(0, 0, 255, 255));
-                quareTest = true;
-            }
-            column++;
-        }
-        std::cout << std::endl;
-        row++;
-    }
-}
 
 Polling::Polling()
 {
 }
 
-Polling::Polling(std::string tpolling, std::string tpattern)
-{
-    pollingToCropPath = tpolling;
-    croppingPatternPath = tpattern;
-}
-
-void Polling::openPollingImage(std::string filename)
+bool Polling::loadImage(std::string filename)
 {
     img = imread( filename.c_str(), cv::IMREAD_COLOR );
+    if(img.empty())
+        return false;
+    if(img.cols == 0 || img.rows == 0)
+        return false;
+    else return true;
 }
-void Polling::openTemplateImage(std::string filename)
+
+void Polling::normalizeImageSize()
 {
-    templ = imread( filename.c_str(), cv::IMREAD_COLOR );
-}
-Polling::Polling(const char *tpolling, const char *tpattern)
-{
-    pollingToCropPath = std::string(tpolling);
-    croppingPatternPath = std::string(tpattern);
-    img = imread( pollingToCropPath.c_str(), cv::IMREAD_COLOR );
-    templ = imread( croppingPatternPath.c_str(), cv::IMREAD_COLOR );
+    Size size(2048, 3508); //Scale do 300DPI
+    resize(img, img, size);
 }

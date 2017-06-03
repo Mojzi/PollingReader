@@ -10,8 +10,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    std::string ptemp = "ankietawzor.png";
-    polling.openTemplateImage(ptemp);
 
     scene = new QGraphicsScene(this);
     scene->setSceneRect(image.rect());
@@ -25,37 +23,59 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::on_actionOpen_triggered()
+
+void MainWindow::on_p1_button_pressed()
 {
-    //std::string name2 = QFileDialog::getOpenFileName(this).toStdString();
-    //polling.getTableCoords();
-    //scene->clear();
-    //scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
-    //scene->setSceneRect(image.rect());
-    //ui->graphicsView->resetTransform();
-    //ui->graphicsView->show();
+
+    firstPagePath = QFileDialog::getOpenFileName(this).toStdString();
+
+    if(!firstPagePath.empty())
+        loadedFirst = true;
+    else
+        loadedFirst = false;
+
+    ui->p1_line->setText(QString::fromStdString(firstPagePath));
 }
 
-void MainWindow::on_pushButton_2_pressed()
+void MainWindow::on_p2_button_pressed()
 {
-    std::string image = QFileDialog::getOpenFileName(this).toStdString();
-    polling.openPollingImage(image);
-    ui->lineEdit->setText(QString::fromStdString(image));
+    secondPagePath = QFileDialog::getOpenFileName(this).toStdString();
+    //polling.openPollingImage(image);
+    if(!secondPagePath.empty())
+        loadedSecond = true;
+    else
+        loadedSecond = false;
+    ui->p2_line->setText(QString::fromStdString(secondPagePath));
 }
 
-void MainWindow::on_pushButton_pressed()
+void MainWindow::on_analyse_button_pressed()
 {
-    std::string image = QFileDialog::getOpenFileName(this).toStdString();
-    polling.openTemplateImage(image);
-}
-
-void MainWindow::on_pushButton_3_pressed()
-{
-    polling.findAnswersTablePosition();
-    scene->clear();
-    scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
-    scene->setSceneRect(image.rect());
-    polling.readResults(*scene);
-    ui->graphicsView->resetTransform();
-    ui->graphicsView->show();
+    int offset;
+    if(loadedFirst)
+    {
+        if (!polling.loadImage(firstPagePath))
+            return;
+        scene->clear();
+        polling.normalizeImageSize();
+        scene->setSceneRect(image.rect());
+        QGraphicsPixmapItem *first = scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
+        polling.analyzeImage(*scene, 0, 0);
+        ui->graphicsView->resetTransform();
+        ui->graphicsView->show();
+    }
+    if(loadedSecond)
+    {
+        if(!polling.loadImage(secondPagePath))
+            return;
+        //scene->clear();
+        polling.normalizeImageSize();
+        //scene->setSceneRect(image.rect());
+        scene->setSceneRect(0,0,10000,10000);
+        QGraphicsPixmapItem *second = scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
+        second->setOffset(2050, 0);
+        polling.analyzeImage(*scene, 2050, 0);
+        //ui->graphicsView->resetTransform();
+        ui->graphicsView->show();
+    }
+    polling.writeAnswersToFile("test.txt");
 }

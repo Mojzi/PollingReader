@@ -53,26 +53,29 @@ void MainWindow::on_analyse_button_pressed()
     int offset;
     if(loadedFirst)
     {
-        polling.openPollingImage(firstPagePath);
+        if (!polling.loadImage(firstPagePath))
+            return;
         scene->clear();
-        polling.resizeImage();
+        polling.normalizeImageSize();
         scene->setSceneRect(image.rect());
-        QGraphicsPixmapItem *first = scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
-        polling.findAnswersTablePosition(*scene, 0, 0);
+        QGraphicsPixmapItem *first = scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
+        polling.analyzeImage(*scene, 0, 0);
         ui->graphicsView->resetTransform();
         ui->graphicsView->show();
     }
     if(loadedSecond)
     {
-        polling.openPollingImage(secondPagePath);
+        if(!polling.loadImage(secondPagePath))
+            return;
         //scene->clear();
-        polling.resizeImage();
+        polling.normalizeImageSize();
         //scene->setSceneRect(image.rect());
         scene->setSceneRect(0,0,10000,10000);
-        QGraphicsPixmapItem *second = scene->addPixmap(QPixmap::fromImage(polling.getDoneImage()));
+        QGraphicsPixmapItem *second = scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
         second->setOffset(2050, 0);
-        polling.findAnswersTablePosition(*scene, 2050, 0);
+        polling.analyzeImage(*scene, 2050, 0);
         //ui->graphicsView->resetTransform();
         ui->graphicsView->show();
     }
+    polling.writeAnswersToFile("test.txt");
 }

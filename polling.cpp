@@ -1,17 +1,8 @@
 #include "polling.h"
 
 using namespace cv;
-struct contour_sorter // 'less' for contours
-{
-    bool operator ()( const std::vector<Point>& a, const std::vector<Point> & b )
-    {
-        Rect ra(boundingRect(a));
-        Rect rb(boundingRect(b));
-        // scale factor for y should be larger than img.width
-        return ( (ra.x + 10000*ra.y) < (rb.x + 10000*rb.y) );
-    }
-};
 
+// For sorting contours with std::sort
 bool compare_rect_h(const Rect & a, const Rect &b) {
     return a.x <= b.x;
 }
@@ -19,7 +10,7 @@ bool compare_rect_v(const Rect & a, const Rect &b) {
     return a.y <= b.y;
 }
 
-QImage Polling::getDoneImage()
+QImage Polling::fromMatToQImage()
 {
     cv::Mat temp; // make the same cv::Mat
     cvtColor(img, temp,CV_BGR2RGB); // cvtColor Makes a copt, that what i need
@@ -29,7 +20,7 @@ QImage Polling::getDoneImage()
     return tableImage;
 }
 
-void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int yOffset)
+void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 {
     using namespace cv;
     Mat gray;
@@ -91,7 +82,6 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int y
     std::vector<Vec4i> hierarchy;
     std::vector<std::vector<cv::Point> > contours;
     cv::findContours(mask, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE, Point(0, 0));
-    //cv::findContours(mask, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
     std::vector<std::vector<Point> > contours_poly( contours.size() );
     std::vector<Rect> boundRect( contours.size() );
@@ -114,14 +104,11 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int y
             continue;
 
         rois.push_back(img(boundRect[i]).clone());
-
-        //        drawContours( img, contours, i, Scalar(0, 0, 255), CV_FILLED, 8, std::vector<Vec4i>(), 0, Point() );
         rectangle( img, boundRect[i].tl(), boundRect[i].br(), Scalar(0, i==0?0:255, i==0?255:0), 3, 8, 0 );
 
         if(i == 0)
         {
             cv::Rect tableBounds(boundRect[i].tl(), boundRect[i].br());
-            //croppedAnswersTable = croppedAnswersTable(tableBounds);
         }
     }
 
@@ -133,33 +120,35 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int y
      *  Read results
      *
      *******************************/
-    std::vector<char> wynik;
     std::vector<Rect> newRect;
-    int contoursNmb = 0;
-    int minContourSize = 1000;
-    int maxContourSize = 2500;
+    int minContourArea = 1000;
+    int maxContourArea = 2500;
+
+    // Throw away all contours that are not answer fields
     for(unsigned int i = 0; i < boundRect.size(); i++)
     {
-        if(contourArea(contours[i]) < minContourSize || contourArea(contours[i]) > maxContourSize)
+        if(contourArea(contours[i]) < minContourArea || contourArea(contours[i]) > maxContourArea)
             continue;
         newRect.push_back(boundRect[i]);
     }
+
+    // Dunno why, but this combination of vertical/horizontal sorts seem to work
     std::sort(newRect.begin(), newRect.end(), compare_rect_v);
     for(unsigned int i=0; i<newRect.size(); i+=15)
     {
         std::sort(newRect.begin()+i, newRect.begin()+i+15, compare_rect_h);
     }
-    //std::cout << "Contour: " << std::endl;
+
+    // Draw found answer fields on screen and mark them if checked
     for(unsigned int i = 0; i < newRect.size(); i++)
     {
-        //std::cout << newRect[i];
         int x1 = newRect[i].x;
         int y1 = newRect[i].y;
         int x2 = x1 + newRect[i].width;
         int y2 = y1 + newRect[i].height;
         if(isFieldChecked(tempImage, x1, y1, x2, y2))
         {
-            wynik.push_back('T');
+            results.push_back(TRUE);
             QPoint lt(x2+xOffset, y1+yOffset);
             QPoint rb(x1+xOffset, y2+yOffset);
             QRect rect(lt, rb);
@@ -167,40 +156,40 @@ void Polling::findAnswersTablePosition(QGraphicsScene &scene, int xOffset, int y
         }
         else
         {
-            wynik.push_back('N');
+            results.push_back(FALSE);
             QPoint lt(x1+xOffset, y1+yOffset);
             QPoint rb(x2+xOffset, y2+yOffset);
             QRect rect(lt, rb);
             scene.addRect(rect, QColor(0, 0, 255, 255));
         }
-        contoursNmb++;
     }
-    std::cout << std::endl << std::endl;
-    for(int i=0; i<contoursNmb; i++)
-    {
-        if((i)%15 == 0 && i!=0)
-        {
-            std::cout << std::endl;
-        }
-        else if((i)%3 == 0 && i!=0)
-        {
-            std::cout << " ";
-        }
-        std::cout << wynik[i];
-    }
-    std::cout << "/////// Liczba kwadratow: " << contoursNmb << " ///////////" << std::endl;
+}
+
+bool Polling::writeAnswersToFile(std::string filename)
+{
+   std::ofstream output;
+   output.open(filename);
+   if(!output.is_open())
+       return false;
+
+   for(unsigned int i=0; i<results.size(); i++)
+   {
+       if(i%15 == 0 && i!=0)
+           output << "\n";
+       output << (results[i]?"1":"0");
+   }
+   output.close();
+   return true;
 }
 
 bool Polling::isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, int ySize)
 {
     int whiteCount = 0;
     int blackCount = 0;
-    //unsigned char *imgData = tempImage.bits();
     for(int i = xPos; i < xSize; i++)
     {
         for(int j = yPos; j< ySize; j++)
         {
-            //if(*(imgData + j + i*ySize) == 1)
             if(tempImage.width() < i+1 || tempImage.height() < j+1)
                 whiteCount++;
             else
@@ -223,23 +212,18 @@ Polling::Polling()
 {
 }
 
-Polling::Polling(std::string tpolling)
-{
-    pollingToCropPath = tpolling;
-}
-
-void Polling::openPollingImage(std::string filename)
+bool Polling::loadImage(std::string filename)
 {
     img = imread( filename.c_str(), cv::IMREAD_COLOR );
+    if(img.empty())
+        return false;
+    if(img.cols == 0 || img.rows == 0)
+        return false;
+    else return true;
 }
 
-void Polling::resizeImage()
+void Polling::normalizeImageSize()
 {
     Size size(2048, 3508); //Scale do 300DPI
     resize(img, img, size);
-}
-Polling::Polling(const char *tpolling)
-{
-    pollingToCropPath = std::string(tpolling);
-    img = imread( pollingToCropPath.c_str(), cv::IMREAD_COLOR );
 }

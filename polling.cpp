@@ -148,7 +148,7 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
         int y2 = y1 + newRect[i].height;
         if(isFieldChecked(tempImage, x1, y1, x2, y2))
         {
-            results.push_back(TRUE);
+            results.push_back(true);
             QPoint lt(x2+xOffset, y1+yOffset);
             QPoint rb(x1+xOffset, y2+yOffset);
             QRect rect(lt, rb);
@@ -156,7 +156,7 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
         }
         else
         {
-            results.push_back(FALSE);
+            results.push_back(false);
             QPoint lt(x1+xOffset, y1+yOffset);
             QPoint rb(x2+xOffset, y2+yOffset);
             QRect rect(lt, rb);
@@ -165,18 +165,18 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
     }
 }
 
-bool Polling::writeAnswersToFile(std::string filename)
+bool Polling::writeAnswersToFile(QString filename)
 {
-   std::ofstream output;
-   output.open(filename);
-   if(!output.is_open())
+   QFile output(filename);
+   //output.open(filename);
+   if(!output.open(QIODevice::WriteOnly))
        return false;
-
+    QTextStream stream(&output);
    for(unsigned int i=0; i<results.size(); i++)
    {
        if(i%15 == 0 && i!=0)
-           output << "\n";
-       output << (results[i]?"1":"0");
+           stream << "\n";
+       stream << (results[i]?"1":"0");
    }
    output.close();
    return true;

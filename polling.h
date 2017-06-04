@@ -13,6 +13,8 @@
 #include <opencv2/imgproc.hpp>
 #include <QGraphicsScene>
 #include <QPoint>
+#include <QFile>
+#include <QTextStream>
 
 class Polling
 {
@@ -33,7 +35,7 @@ public:
     void normalizeImageSize();
     QImage fromMatToQImage();
     void analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset);
-    bool writeAnswersToFile(std::string filename);
+    bool writeAnswersToFile(QString filename);
 };
 
 #endif // POLLING_H

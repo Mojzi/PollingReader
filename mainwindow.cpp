@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <iostream>
-#include <QFileDialog>
+
 #include "polling.h"
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -77,5 +77,11 @@ void MainWindow::on_analyse_button_pressed()
         //ui->graphicsView->resetTransform();
         ui->graphicsView->show();
     }
-    polling.writeAnswersToFile("test.txt");
+
+}
+
+void MainWindow::on_save_results_button_pressed()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,tr("Save results"),tr(".txt"));
+    polling.writeAnswersToFile(fileName);
 }

@@ -9,6 +9,8 @@
 #include <QImage>
 #include <pollingview.h>
 #include "polling.h"
+#include <QGraphicsPixmapItem>
+#include <QFileDialog>
 
 namespace Ui {
 class MainWindow;
@@ -28,6 +30,8 @@ private slots:
     void on_p2_button_pressed();
 
     void on_analyse_button_pressed();
+
+    void on_save_results_button_pressed();
 
 private:
     std::string firstPagePath;

@@ -51,7 +51,6 @@ void MainWindow::on_p2_button_pressed()
 void MainWindow::on_analyse_button_pressed()
 {
     polling.clearAnswers();
-    int offset;
     if(loadedFirst)
     {
         if (!polling.loadImage(firstPagePath))
@@ -59,7 +58,7 @@ void MainWindow::on_analyse_button_pressed()
         scene->clear();
         polling.normalizeImageSize();
         scene->setSceneRect(image.rect());
-        QGraphicsPixmapItem *first = scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
+        scene->addPixmap(QPixmap::fromImage(polling.fromMatToQImage()));
         polling.analyzeImage(*scene, 0, 0);
         ui->graphicsView->resetTransform();
         ui->graphicsView->show();

@@ -65,7 +65,6 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
     // Apply morphology operations
     erode(vertical, vertical, verticalStructure, Point(-1, -1));
     dilate(vertical, vertical, verticalStructure, Point(-1, -1));
-    //    dilate(vertical, vertical, verticalStructure, Point(-1, -1)); // expand vertical lines
 
     // create a mask which includes the tables
     Mat mask = horizontal + vertical;
@@ -89,27 +88,8 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 
     for (size_t i = 0; i < contours.size(); i++)
     {
-
         approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
         boundRect[i] = boundingRect( Mat(contours_poly[i]) );
-
-        // find the number of joints that each table has
-        Mat roi = joints(boundRect[i]);
-
-        std::vector<std::vector<Point> > joints_contours;
-        findContours(roi, joints_contours, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
-
-        // if the number is not more than 5 then most likely it not a table
-        if(joints_contours.size() <= 4)
-            continue;
-
-        rois.push_back(img(boundRect[i]).clone());
-        rectangle( img, boundRect[i].tl(), boundRect[i].br(), Scalar(0, i==0?0:255, i==0?255:0), 3, 8, 0 );
-
-        if(i == 0)
-        {
-            cv::Rect tableBounds(boundRect[i].tl(), boundRect[i].br());
-        }
     }
 
     QImage tempImage = tableImage.convertToFormat(QImage::Format_Mono);
@@ -168,7 +148,6 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 bool Polling::writeAnswersToFile(QString filename)
 {
    QFile output(filename);
-   //output.open(filename);
    if(!output.open(QIODevice::WriteOnly))
        return false;
     QTextStream stream(&output);
@@ -202,7 +181,6 @@ bool Polling::isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, i
             }
         }
     }
-    //std::cout << " Black:" << blackCount << " White:" << whiteCount;
     return blackCount>whiteCount/3?true:false;
 }
 

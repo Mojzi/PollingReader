@@ -50,6 +50,7 @@ void MainWindow::on_p2_button_pressed()
 
 void MainWindow::on_analyse_button_pressed()
 {
+    polling.clearAnswers();
     int offset;
     if(loadedFirst)
     {

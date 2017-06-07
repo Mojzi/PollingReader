@@ -36,6 +36,7 @@ public:
     QImage fromMatToQImage();
     void analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset);
     bool writeAnswersToFile(QString filename);
+    void clearAnswers();
 };
 
 #endif // POLLING_H

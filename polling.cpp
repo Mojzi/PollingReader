@@ -161,6 +161,11 @@ bool Polling::writeAnswersToFile(QString filename)
    return true;
 }
 
+void Polling::clearAnswers()
+{
+    results.clear();
+}
+
 bool Polling::isFieldChecked(QImage &tempImage, int xPos, int yPos, int xSize, int ySize)
 {
     int whiteCount = 0;

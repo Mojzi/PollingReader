@@ -37,7 +37,7 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 
     // Apply adaptiveThreshold at the bitwise_not of gray, notice the ~ symbol
     Mat bw;
-    adaptiveThreshold(~gray, bw, 255, CV_ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, -2);
+    adaptiveThreshold(~gray, bw, 255, CV_ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, 0);
 
     // Create the images that will use to extract the horizonta and vertical lines
     Mat horizontal = bw.clone();
@@ -145,7 +145,7 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
     }
 }
 
-bool Polling::writeAnswersToFile(QString filename)
+bool Polling::writeAnswersToFile(QString filename, QString separator)
 {
    QFile output(filename);
    if(!output.open(QIODevice::WriteOnly))
@@ -156,6 +156,7 @@ bool Polling::writeAnswersToFile(QString filename)
        if(i%15 == 0 && i!=0)
            stream << "\n";
        stream << (results[i]?"1":"0");
+       stream<<separator;
    }
    output.close();
    return true;

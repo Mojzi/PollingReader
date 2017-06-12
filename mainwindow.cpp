@@ -83,5 +83,6 @@ void MainWindow::on_analyse_button_pressed()
 void MainWindow::on_save_results_button_pressed()
 {
     QString fileName = QFileDialog::getSaveFileName(this,tr("Save results"),tr(".txt"));
-    polling.writeAnswersToFile(fileName);
+    QString separator = ui->leSep->text();
+    polling.writeAnswersToFile(fileName,separator);
 }

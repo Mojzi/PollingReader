@@ -35,7 +35,7 @@ public:
     void normalizeImageSize();
     QImage fromMatToQImage();
     void analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset);
-    bool writeAnswersToFile(QString filename);
+    bool writeAnswersToFile(QString filename,QString separator);
     void clearAnswers();
 };
 

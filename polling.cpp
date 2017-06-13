@@ -156,8 +156,6 @@ bool Polling::writeAnswersToFile(QString filename, QString separator)
     int rowSize = 15;
     for(unsigned int i=0; i<results.size(); i+=3)
     {
-        if(i!=0 && (i%rowSize == 0))
-            i+= rowSize;
         bool alreadyMarked = false;
         for(unsigned int row = 0; row < 2; row ++)
         {
@@ -178,6 +176,9 @@ bool Polling::writeAnswersToFile(QString filename, QString separator)
         }
         if(i+rowSize+3 != results.size() && alreadyMarked == false)
             selectedMark.push_back('N');
+
+        if(i!=0 && ((i+3)%rowSize == 0))
+            i+= rowSize;
     }
 
     for(unsigned int i=0; i<selectedMark.size(); i++)

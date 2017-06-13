@@ -174,7 +174,7 @@ bool Polling::writeAnswersToFile(QString filename, QString separator)
                 }
             }
         }
-        if(i+rowSize+3 != results.size() && alreadyMarked == false)
+        if(alreadyMarked == false)
             selectedMark.push_back('N');
 
         if(i!=0 && ((i+3)%rowSize == 0))

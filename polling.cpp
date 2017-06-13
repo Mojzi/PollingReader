@@ -147,19 +147,48 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 
 bool Polling::writeAnswersToFile(QString filename, QString separator)
 {
-   QFile output(filename);
-   if(!output.open(QIODevice::WriteOnly))
-       return false;
+    QFile output(filename);
+    if(!output.open(QIODevice::WriteOnly))
+        return false;
     QTextStream stream(&output);
-   for(unsigned int i=0; i<results.size(); i++)
-   {
-       if(i%15 == 0 && i!=0)
-           stream << "\n";
-       stream << (results[i]?"1":"0");
-       stream<<separator;
-   }
-   output.close();
-   return true;
+
+    std::vector<char> selectedMark;
+    int rowSize = 15;
+    for(unsigned int i=0; i<results.size(); i+=3)
+    {
+        if(i!=0 && (i%rowSize == 0))
+            i+= rowSize;
+        bool alreadyMarked = false;
+        for(unsigned int row = 0; row < 2; row ++)
+        {
+            for(unsigned int column = 0; column < 3; column ++)
+            {
+                int currPos = column + i + (row?rowSize:0);
+                if(alreadyMarked == false && results[currPos])
+                {
+                    alreadyMarked = true;
+                    selectedMark.push_back((column + (row?3:0)) + '0');
+                }
+                else if(alreadyMarked == true && results[currPos])
+                {
+                    selectedMark.pop_back();
+                    selectedMark.push_back('M');
+                }
+            }
+        }
+        if(i+rowSize+3 != results.size() && alreadyMarked == false)
+            selectedMark.push_back('N');
+    }
+
+    for(unsigned int i=0; i<selectedMark.size(); i++)
+    {
+        if(i%5 == 0 && i!=0)
+            stream << "\n";
+        stream << selectedMark[i];
+        stream<<separator;
+    }
+    output.close();
+    return true;
 }
 
 void Polling::clearAnswers()

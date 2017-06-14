@@ -37,13 +37,13 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
 
     // Apply adaptiveThreshold at the bitwise_not of gray, notice the ~ symbol
     Mat bw;
-    adaptiveThreshold(~gray, bw, 255, CV_ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, 0);
+    adaptiveThreshold(~gray, bw, 255, CV_ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 15, 7);
 
     // Create the images that will use to extract the horizonta and vertical lines
     Mat horizontal = bw.clone();
     Mat vertical = bw.clone();
 
-    int scale = 15; // play with this variable in order to increase/decrease the amount of lines to be detected
+    int scale = 30; // play with this variable in order to increase/decrease the amount of lines to be detected
 
     // Specify size on horizontal axis
     int horizontalsize = horizontal.cols / scale;
@@ -108,6 +108,10 @@ void Polling::analyzeImage(QGraphicsScene &scene, int xOffset, int yOffset)
     for(unsigned int i = 0; i < boundRect.size(); i++)
     {
         if(contourArea(contours[i]) < minContourArea || contourArea(contours[i]) > maxContourArea)
+            continue;
+        if(boundRect[i].height < 35 || boundRect[i].height > 55)
+            continue;
+        if(boundRect[i].width < 35 || boundRect[i].width > 55)
             continue;
         newRect.push_back(boundRect[i]);
     }
